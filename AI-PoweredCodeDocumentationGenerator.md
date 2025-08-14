@@ -1,0 +1,66 @@
+# AI-Powered Code Documentation Generator
+
+## Core Features
+
+- Python Code Analysis
+
+- AI Docstring Generation & Optimization
+
+- Automated Static Documentation Site Generation
+
+- Web-based Interface for Git Repositories
+
+## Tech Stack
+
+{
+  "Web": {
+    "arch": "react",
+    "component": null
+  },
+  "iOS": null,
+  "Android": null
+}
+
+## Design
+
+Glassmorphism Tech Blue UI
+
+## Plan
+
+Note: 
+
+- [ ] is holding
+- [/] is doing
+- [X] is done
+
+---
+
+[X] Initialize the backend project with FastAPI and set up the directory structure for routes, services, and utilities.
+
+[X] Develop a 'Parser' service using Python's `ast` module to traverse a given directory of `.py` files and extract a list of function/class definitions and their existing docstrings.
+
+[X] Create an 'AIService' module to handle communication with the Tencent Hunyuan API. Implement a function that takes Python code as input and returns a generated docstring.
+
+[X] Implement the core 'Documentation' service that orchestrates the process: it uses the Parser to get code structures, then iterates through them, calling the AIService for any item missing a docstring.
+
+[ ] Develop a 'SiteBuilder' service that uses the `MkDocs` library. This service will take the structured code and docstrings, generate corresponding Markdown files, and run the `mkdocs build` command to create the static HTML site.
+
+[X] Create a main API endpoint (e.g., `/api/v1/generate`) in FastAPI that accepts a Git repository URL. This endpoint will manage cloning the repo, triggering the full documentation and site generation pipeline, and returning the URL of the final site.
+
+[ ] Initialize the frontend project using React, TypeScript, and configure Tailwind CSS for styling.
+
+[ ] Build the UI for the landing page, including the hero section with the Git URL input form and the features section.
+
+[ ] Implement the client-side logic to make an API call to the `/api/v1/generate` endpoint when the user submits the form.
+
+[ ] Create the 'Generation Status' page/component to display real-time progress feedback and the final result link returned from the backend.
+
+[X] Expose MCP server entrypoint with SSE and basic tools (parse_local, generate_from_repo)
+
+[X] Implement MCP tool 'generate_from_repo' with git clone + parse minimal flow
+
+[X] Expose MCP tool 'generate_docstrings' to generate missing docstrings with AI
+
+[X] Support custom clone destination via dest_dir/work_root in generate_from_repo
+
+[X] Add comprehensive MCP usage examples and documentation to README
