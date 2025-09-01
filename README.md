@@ -12,6 +12,17 @@
   - 使用 MkDocs（Material 主题）构建静态文档站点
   - 简洁前端（React+Tailwind）用于提交仓库地址与查看生成进度
 
+## 目录
+- [功能与架构](#功能与架构)
+- [快速开始](#快速开始)
+- [MCP工具使用示例](#mcp工具使用示例)
+- [启动 REST API（Swagger 调试）](#启动-rest-apiswagger-调试)
+- [API 与 MCP 工具说明](#api-与-mcp-工具说明)
+- [进度与路线图](#进度与路线图)
+- [常见问题](#常见问题)
+- [许可与贡献](#许可与贡献)
+- [Docstring 与静态站点](#docstring-与静态站点)
+
 ---
 
 ## 功能与架构
@@ -97,7 +108,18 @@ npx @modelcontextprotocol/cli@latest call sse http://127.0.0.1:8000 parse_local 
 npx @modelcontextprotocol/cli@latest call sse http://127.0.0.1:8000 generate_from_repo "{\"repo_url\":\"https://github.com/psf/sampleproject.git\"}"
 ```
 
-### MCP工具使用示例
+### 一键生成静态文档站点（MCP 工具，builtin 模式）
+零依赖、零导入，适用于任何仓库。
+```powershell
+# 生成到 <project>/_site
+npx @modelcontextprotocol/cli@latest call sse http://127.0.0.1:8000 generate_static_site "{\"local_path\":\"D:\\\\Repos\\\\your-project\",\"site_dir\":\"D:\\\\Repos\\\\your-project\\\\_site\",\"generator\":\"builtin\",\"exclude_patterns\":[\"**/.venv/**\",\"**/venv/**\",\"**/env/**\",\"**/.env/**\"],\"docformat\":\"google\",\"language\":\"zh\",\"install_deps\":false}"
+# 打开
+Start-Process 'D:\Repos\your-project\_site\index.html'
+```
+
+---
+
+## MCP工具使用示例
 
 以下是一些实际的MCP工具使用示例，展示了如何使用本项目的代码文档生成功能：
 
@@ -138,17 +160,6 @@ npx @modelcontextprotocol/cli@latest call sse http://127.0.0.1:8000 parse_local 
 ```bash
 # 为缺失文档的函数生成中文docstring（限制3个）
 npx @modelcontextprotocol/cli@latest call sse http://127.0.0.1:8000 generate_docstrings "{\"local_path\":\"D:\\\\Repos\\\\Python\",\"style\":\"google\",\"language\":\"zh\",\"max_items\":3}"
-
-# 自动为Python函数添加如下格式的中文文档：
-# def get_all(cwd):
-#     """递归遍历指定目录，统计所有文件数量。
-#     
-#     Args:
-#         cwd (str): 要遍历的目录路径。
-#         
-#     Returns:
-#         None: 该函数没有返回值，但会将文件名添加到全局result列表中。
-#     """
 ```
 
 这些示例展示了本项目作为MCP服务的强大功能：
@@ -228,3 +239,83 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/generate" -Method POST -Bod
 
 - 许可证：MIT（可按需要更新）
 - 欢迎提交 Issue/PR 参与共建
+
+---
+
+## Docstring 与静态站点
+
+本服务支持对任意 Python 仓库：
+- 生成中文 Google 风格 Docstring（自动写回源码）
+- 编译为可部署的静态文档站点（多种生成模式，通用稳定）
+
+### 1) 生成中文 Google 风格 Docstring
+
+- 工具: generate_docstrings
+- 默认行为:
+  - 自动写回到源码：在函数/类/模块定义下方的三引号处插入 Docstring
+  - 详细日志：runtime/logs/docgen-*.log
+- 常用参数:
+  - style: google
+  - language: zh
+  - max_items: 限制生成数量（可不传表示全量）
+  - exclude_patterns: 目录/文件排除（glob）
+  - skip_imports: 跳过的第三方库（名称列表）
+  - dry_run: true 则仅扫描不写回
+- 示例（MCP 调用，JSON 参数）:
+  {
+    "local_path": "D:\\Repos\\your-project",
+    "style": "google",
+    "language": "zh",
+    "max_items": 100,
+    "exclude_patterns": ["**/.venv/**","**/venv/**","**/env/**","**/.env/**"],
+    "skip_imports": [],
+    "dry_run": false
+  }
+
+查看结果:
+- 代码内直接查看（搜索“自动生成的函数说明”）
+- 日志文件：runtime/logs/docgen-*.log
+
+### 2) 生成静态文档站点
+
+- 工具: generate_static_site
+- 生成器选项:
+  - builtin: 内置零依赖、零导入生成器（推荐，最稳定、适配任意仓库）
+  - mkdocs: mkdocs + mkdocstrings（griffe），不导入代码；需安装依赖
+  - pdoc: pdoc 生成；可能导入代码，易受依赖影响
+  - auto: 优先 mkdocs，失败回退 pdoc
+- 常用参数:
+  - local_path: 项目根目录
+  - site_dir: 输出目录（默认 <local_path>/_site）
+  - generator: builtin | mkdocs | pdoc | auto（默认 mkdocs）
+  - exclude_patterns: 排除目录或文件（glob）
+  - docformat: google
+  - language: zh
+  - install_deps: 是否自动安装 mkdocs/pdoc 等依赖（对 builtin 无需）
+  - timeout: 超时秒数
+- 示例（内置生成器，零依赖）:
+  {
+    "local_path": "D:\\Repos\\your-project",
+    "site_dir": "D:\\Repos\\your-project\\_site",
+    "generator": "builtin",
+    "exclude_patterns": ["**/.venv/**","**/venv/**","**/env/**","**/.env/**"],
+    "docformat": "google",
+    "language": "zh",
+    "install_deps": false,
+    "timeout": 180
+  }
+
+输出:
+- 静态站点目录：<local_path>/_site
+- 入口页面：<local_path>/_site/index.html
+- 日志：runtime/logs/docsite-*.log（builtin 模式无错误日志文件时返回 null）
+
+### 3) 故障排查要点
+
+- 生成为 0 或报错：
+  - 优先使用 generator=builtin（不依赖外部包与导入）
+  - 配置 exclude_patterns 排除虚拟环境、构建目录等
+  - 如需 mkdocs/pdoc，设置 install_deps=true 并确保外网可访问 PyPI
+- 日志定位：
+  - Docstring：runtime/logs/docgen-*.log
+  - 文档站点：runtime/logs/docsite-*.log
