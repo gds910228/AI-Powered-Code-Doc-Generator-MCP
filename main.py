@@ -188,6 +188,11 @@ def generate_docstrings(
     max_items: Optional[int] = None,
     depth: int = 1,
     timeout: int = 180,
+    exclude_patterns: Optional[List[str]] = None,
+    skip_imports: Optional[List[str]] = None,
+    batch_size: Optional[int] = None,
+    single_file_timeout: Optional[int] = None,
+    dry_run: bool = False,
 ) -> Dict[str, Any]:
     """
     Generate missing docstrings for a project using AI.
@@ -224,6 +229,11 @@ def generate_docstrings(
             style=style,
             language=language,
             max_items=max_items,
+            exclude_patterns=exclude_patterns,
+            skip_imports=skip_imports,
+            batch_size=batch_size,
+            single_file_timeout=single_file_timeout,
+            dry_run=dry_run,
         )
         return {
             "status": "completed",
@@ -231,6 +241,7 @@ def generate_docstrings(
             "target_dir": out["target_dir"],
             "summary": out["summary"],
             "results": out["results"],
+            "errors_detail_path": out.get("errors_detail_path"),
         }
 
     except FileNotFoundError:

@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import os
 import ast
+import fnmatch
 from dataclasses import dataclass
 from typing import List, Optional, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 # ---------------------------
@@ -23,7 +24,7 @@ class FunctionDoc(BaseModel):
     name: str
     lineno: int
     docstring: Optional[str] = None
-    parameters: List[ParameterDoc] = []
+    parameters: List[ParameterDoc] = Field(default_factory=list)
     returns: Optional[str] = None
     is_method: bool = False
 
@@ -32,15 +33,15 @@ class ClassDoc(BaseModel):
     name: str
     lineno: int
     docstring: Optional[str] = None
-    methods: List[FunctionDoc] = []
+    methods: List[FunctionDoc] = Field(default_factory=list)
 
 
 class ModuleDoc(BaseModel):
     path: str               # absolute file path
     module: str             # dotted module name (relative to project root)
     docstring: Optional[str] = None
-    classes: List[ClassDoc] = []
-    functions: List[FunctionDoc] = []
+    classes: List[ClassDoc] = Field(default_factory=list)
+    functions: List[FunctionDoc] = Field(default_factory=list)
 
 
 # ---------------------------
@@ -66,6 +67,19 @@ _SKIP_DIRS = {
 
 def _should_skip_dir(dir_name: str) -> bool:
     return dir_name in _SKIP_DIRS or dir_name.startswith(".")
+
+def _is_excluded(rel_path: str, patterns: Optional[List[str]]) -> bool:
+    """
+    Check whether a relative path matches any of the exclude patterns (glob).
+    """
+    if not patterns:
+        return False
+    # Normalize to forward slashes for matching
+    norm = rel_path.replace(os.sep, "/")
+    for pat in patterns:
+        if fnmatch.fnmatch(norm, pat):
+            return True
+    return False
 
 
 def _rel_module_name(project_root: str, file_path: str) -> str:
@@ -189,7 +203,7 @@ def parse_file(file_path: str, project_root: str) -> ModuleDoc:
     )
 
 
-def parse_python_project(root_dir: str) -> List[ModuleDoc]:
+def parse_python_project(root_dir: str, exclude_patterns: Optional[List[str]] = None) -> List[ModuleDoc]:
     """
     Traverse a project directory, parse all .py files (excluding skipped dirs),
     and return a list of ModuleDoc structures.
@@ -200,11 +214,19 @@ def parse_python_project(root_dir: str) -> List[ModuleDoc]:
     for current_root, dirs, files in os.walk(root_dir):
         # mutate dirs in-place to prune traversal
         dirs[:] = [d for d in dirs if not _should_skip_dir(d)]
+        if exclude_patterns:
+            # Exclude directories by glob patterns relative to project root
+            dirs[:] = [
+                d for d in dirs
+                if not _is_excluded(os.path.relpath(os.path.join(current_root, d), root_dir), exclude_patterns)
+            ]
 
         for fn in files:
             if not fn.endswith(".py"):
                 continue
             file_path = os.path.join(current_root, fn)
+            if exclude_patterns and _is_excluded(os.path.relpath(file_path, root_dir), exclude_patterns):
+                continue
             try:
                 results.append(parse_file(file_path, project_root=root_dir))
             except SyntaxError:

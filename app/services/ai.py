@@ -188,12 +188,69 @@ Associated Implementation Code (for context):
         return content.strip()
 
 
-def get_ai_service() -> AIService:
+class LocalDocService:
     """
-    Helper to get a configured AIService instance.
-    Raises RuntimeError if not configured.
+    离线回退Docstring生成器：当未配置远程AI时使用。
+    生成符合Google风格、中文/英文可选的简洁Docstring。
     """
-    return AIService(AIServiceConfig.from_env())
+    def generate_docstring(self, code: str, signature: str, style: str = "google", language: str = "en") -> str:
+        # 粗略从签名提取参数名
+        try:
+            sig_inner = signature[signature.index("(")+1: signature.rindex(")")]
+        except Exception:
+            sig_inner = ""
+        params = []
+        for p in [x.strip() for x in sig_inner.split(",") if x.strip()]:
+            # 去掉*与类型注解，仅保留参数名
+            name = p
+            # 去掉 ** / *
+            if name.startswith("**"):
+                name = name[2:]
+            elif name.startswith("*"):
+                name = name[1:]
+            # 去掉 : type
+            if ":" in name:
+                name = name.split(":", 1)[0].strip()
+            # 排除常见self
+            if name and name != "self":
+                params.append(name)
+
+        zh = (language == "zh")
+        lines = []
+        # 概述
+        lines.append("自动生成的函数说明。" if zh else "Auto-generated function description.")
+        lines.append("")
+        # 参数
+        if params:
+            lines.append("Args:" if not zh else "Args:")
+            for n in params:
+                lines.append(f"    {n}: 参数说明。") if zh else lines.append(f"    {n}: Description.")
+            lines.append("")
+        # 返回
+        lines.append("Returns:" if not zh else "Returns:")
+        lines.append("    返回值说明。" if zh else "    Return value description.")
+        lines.append("")
+        # 示例占位
+        lines.append("Examples:" if not zh else "Examples:")
+        if zh:
+            lines.append("    >>> # 示例：请根据实际使用补充示例")
+        else:
+            lines.append("    >>> # Example: add a realistic usage example")
+        return "\n".join(lines)
+
+def get_ai_service():
+    """
+    获取AI服务实例；若未配置远程AI（环境变量缺失）则回退到本地生成器。
+    环境变量:
+      - HUNYUAN_OPENAI_BASE
+      - HUNYUAN_API_KEY
+      - HUNYUAN_MODEL (可选)
+    """
+    try:
+        return AIService(AIServiceConfig.from_env())
+    except Exception:
+        # 本地回退，确保服务在任何环境下都可用
+        return LocalDocService()
 
 
 # Quick self test (optional)
