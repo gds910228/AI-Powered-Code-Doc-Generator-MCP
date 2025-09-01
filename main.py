@@ -36,6 +36,8 @@ except Exception as e:
 from app.services.parser import parse_python_project
 from app.services.repo import clone_repo, get_runtime_root
 from app.services.documentation import generate_missing_docstrings
+from app.services.site_builder import build_static_site
+from app.services.site_builder_builtin import build_builtin_site
 
 
 def _summarize(docs) -> Dict[str, Any]:
@@ -268,6 +270,51 @@ def generate_docstrings(
     except RuntimeError as e:
         # Likely AIService configuration or HTTP error
         return {"status": "error", "message": str(e)}
+    except Exception as e:
+        return {"status": "error", "message": f"unexpected error: {type(e).__name__}: {e}"}
+
+
+@mcp.tool()
+def generate_static_site(
+    local_path: str,
+    site_dir: Optional[str] = None,
+    generator: str = "mkdocs",
+    include_paths: Optional[List[str]] = None,
+    exclude_patterns: Optional[List[str]] = None,
+    docformat: str = "google",
+    language: str = "zh",
+    install_deps: bool = False,
+    timeout: int = 300,
+) -> Dict[str, Any]:
+    """
+    Build a static documentation site for a Python project without importing the project code.
+    Prefers mkdocs + mkdocstrings (griffe). When generator='auto', falls back to pdoc on failure.
+    Returns:
+      { "status": "completed"|"error", "site_dir": "...", "generator_used": "mkdocs"|"pdoc", "errors_detail_path": "..." }
+    """
+    try:
+        if not os.path.isdir(local_path):
+            return {"status": "error", "message": f"local_path not found or not a directory: {local_path}"}
+        if generator.lower() == "builtin":
+            return build_builtin_site(
+                project_dir=os.path.abspath(local_path),
+                site_dir=site_dir,
+                exclude_patterns=exclude_patterns,
+                docformat=docformat,
+                language=language,
+            )
+        out = build_static_site(
+            project_dir=os.path.abspath(local_path),
+            site_dir=site_dir,
+            generator=generator,
+            include_paths=include_paths,
+            exclude_patterns=exclude_patterns,
+            docformat=docformat,
+            language=language,
+            install_deps=install_deps,
+            timeout=timeout,
+        )
+        return out
     except Exception as e:
         return {"status": "error", "message": f"unexpected error: {type(e).__name__}: {e}"}
 
